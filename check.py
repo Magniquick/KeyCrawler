@@ -23,6 +23,7 @@ _SUPPRESSED_ERROR_KEYWORDS = ("Unable to load PEM file", "MalformedFraming")
 def _should_suppress_error(error: Exception) -> bool:
     return any(keyword in str(error) for keyword in _SUPPRESSED_ERROR_KEYWORDS)
 
+
 url = "https://android.googleapis.com/attestation/status"
 headers = {
     "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate",
@@ -56,7 +57,10 @@ def parse_certificates(xml_string, pem_number):
     pem_certificates = root.findall('.//Certificate[@format="pem"]')
 
     if pem_certificates is not None:
-        pem_contents = [cert.text.strip() if cert.text is not None else '' for cert in pem_certificates[:pem_number]]
+        pem_contents = [
+            cert.text.strip() if cert.text is not None else ""
+            for cert in pem_certificates[:pem_number]
+        ]
         return pem_contents
     else:
         raise Exception("No Certificate found.")
@@ -74,15 +78,19 @@ def parse_private_key(xml_string):
 
 def load_public_key_from_file(file_path):
     with open(file_path, "rb") as key_file:
-        public_key = serialization.load_pem_public_key(key_file.read(), backend=default_backend())
+        public_key = serialization.load_pem_public_key(
+            key_file.read(), backend=default_backend()
+        )
     return public_key
 
 
 def compare_keys(public_key1, public_key2):
     return public_key1.public_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
     ) == public_key2.public_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
 
@@ -97,7 +105,9 @@ def keybox_check(certificate_text):
         return False
 
     try:
-        certificate = x509.load_pem_x509_certificate(pem_certificates[0].encode(), default_backend())
+        certificate = x509.load_pem_x509_certificate(
+            pem_certificates[0].encode(), default_backend()
+        )
         try:
             private_key = re.sub(re.compile(r"^\s+", re.MULTILINE), "", private_key)
             private_key = serialization.load_pem_private_key(
@@ -132,8 +142,12 @@ def keybox_check(certificate_text):
 
     # Keychain Authentication
     for i in range(pem_number - 1):
-        son_certificate = x509.load_pem_x509_certificate(pem_certificates[i].encode(), default_backend())
-        father_certificate = x509.load_pem_x509_certificate(pem_certificates[i + 1].encode(), default_backend())
+        son_certificate = x509.load_pem_x509_certificate(
+            pem_certificates[i].encode(), default_backend()
+        )
+        father_certificate = x509.load_pem_x509_certificate(
+            pem_certificates[i + 1].encode(), default_backend()
+        )
 
         if son_certificate.issuer != father_certificate.subject:
             return False
@@ -155,7 +169,9 @@ def keybox_check(certificate_text):
                     "sha512WithRSAEncryption": hashes.SHA512(),
                 }[signature_algorithm]
                 padding_algorithm = padding.PKCS1v15()
-                public_key.verify(signature, tbs_certificate, padding_algorithm, hash_algorithm)
+                public_key.verify(
+                    signature, tbs_certificate, padding_algorithm, hash_algorithm
+                )
             elif signature_algorithm in [
                 "ecdsa-with-SHA256",
                 "ecdsa-with-SHA1",
@@ -176,7 +192,9 @@ def keybox_check(certificate_text):
             return False
 
     # Root Certificate Validation
-    root_certificate = x509.load_pem_x509_certificate(pem_certificates[-1].encode(), default_backend())
+    root_certificate = x509.load_pem_x509_certificate(
+        pem_certificates[-1].encode(), default_backend()
+    )
     root_public_key = root_certificate.public_key()
     google_public_key = load_public_key_from_file("pem/google.pem")
     aosp_ec_public_key = load_public_key_from_file("pem/aosp_ec.pem")
@@ -199,7 +217,9 @@ def keybox_check(certificate_text):
 
     status = None
     for i in range(pem_number):
-        certificate = x509.load_pem_x509_certificate(pem_certificates[i].encode(), default_backend())
+        certificate = x509.load_pem_x509_certificate(
+            pem_certificates[i].encode(), default_backend()
+        )
         serial_number = certificate.serial_number
         serial_number_string = hex(serial_number)[2:].lower()
         if status_json["entries"].get(serial_number_string, None):

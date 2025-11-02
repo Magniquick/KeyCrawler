@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -9,7 +10,15 @@ from dotenv import load_dotenv
 from lxml import etree
 
 from check import keybox_check
-from helpers import CACHE_FILE, SAVE_DIR, hash_xml_file, log_error, log_info, print_section, print_summary
+from helpers import (
+    CACHE_FILE,
+    SAVE_DIR,
+    hash_xml_file,
+    log_error,
+    log_info,
+    print_section,
+    print_summary,
+)
 
 SESSION = requests.Session()
 
@@ -71,19 +80,31 @@ def fetch_file_content(url: str) -> bytes:
     raise RuntimeError(f"Failed to download {url}")
 
 
-def process_item(item: dict, cached_urls: Set[str], stats: ScrapeStats, verbose: bool) -> None:
+def clean_item(context: str) -> str:
+    """Removes comments from the XML content."""
+    return re.sub(r"(?m)(#|//).*$", "", context).strip()
+
+
+def process_item(
+    item: dict, cached_urls: Set[str], stats: ScrapeStats, verbose: bool
+) -> None:
     file_name = item["name"]
     if not file_name.lower().endswith(".xml"):
         return
 
     stats.searched += 1
-    raw_url = item["html_url"].replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+    raw_url = (
+        item["html_url"]
+        .replace("github.com", "raw.githubusercontent.com")
+        .replace("/blob/", "/")
+    )
     if raw_url in cached_urls:
         stats.cached += 1
         return
 
     cached_urls.add(raw_url)
     file_content = fetch_file_content(raw_url)
+    file_content = clean_item(file_content.decode("utf-8")).encode("utf-8")
     try:
         hashed_name = hash_xml_file(file_content)
     except etree.XMLSyntaxError:
@@ -99,14 +120,24 @@ def process_item(item: dict, cached_urls: Set[str], stats: ScrapeStats, verbose:
             log_info(f"Duplicate keybox skipped from {raw_url}")
         return
 
-    if file_content and keybox_check(file_content):
+    try:
+        keybox_check(file_content)
+    except ValueError:
+        stats.malformed += 1
+        if verbose:
+            log_error(f"Invalid keybox skipped from {raw_url}")
+        return
+
+    if file_content:
         destination.write_bytes(file_content)
         stats.added += 1
         if verbose:
             log_info(f"Stored new keybox from {raw_url}")
 
 
-def fetch_and_process_results(page: int, cached_urls: Set[str], stats: ScrapeStats, verbose: bool) -> bool:
+def fetch_and_process_results(
+    page: int, cached_urls: Set[str], stats: ScrapeStats, verbose: bool
+) -> bool:
     params = {"per_page": RESULTS_PER_PAGE, "page": page}
     response = SESSION.get(SEARCH_URL, headers=HEADERS, params=params)
     if response.status_code != 200:
@@ -114,7 +145,9 @@ def fetch_and_process_results(page: int, cached_urls: Set[str], stats: ScrapeSta
         log_error(f"response: {response.text}")
         if response.status_code == 403 and response.headers.get("X-RateLimit-Reset"):
             reset_time = int(response.headers["X-RateLimit-Reset"])
-            raise RateLimitError("Rate limit exceeded. Please try again later.", resume_epoch=reset_time)
+            raise RateLimitError(
+                "Rate limit exceeded. Please try again later.", resume_epoch=reset_time
+            )
         raise RuntimeError("GitHub search failed")
 
     search_results = response.json()
@@ -132,7 +165,9 @@ def scrape_keyboxes(*, verbose: bool = True) -> ScrapeStats:
 
     while has_more_results:
         try:
-            has_more_results = fetch_and_process_results(page, cached_urls, stats, verbose)
+            has_more_results = fetch_and_process_results(
+                page, cached_urls, stats, verbose
+            )
             page += 1
         except RateLimitError as error:
             sleep_for = error.get_sleep_time()

@@ -3,7 +3,15 @@ from pathlib import Path
 from typing import Iterator
 
 from check import keybox_check
-from helpers import FILE_DIR, SAVE_DIR, hash_xml_file, log_info, log_warning, print_section, print_summary
+from helpers import (
+    FILE_DIR,
+    SAVE_DIR,
+    hash_xml_file,
+    log_info,
+    log_warning,
+    print_section,
+    print_summary,
+)
 
 
 @dataclass
@@ -21,13 +29,15 @@ def _iter_source_files(path: Path, exclude_dir: Path) -> Iterator[Path]:
         yield candidate
 
 
-def import_manual_keyboxes(manual_dir: Path = FILE_DIR / "manual", *, verbose: bool = True) -> ImportStats:
+def import_manual_keyboxes(
+    manual_dir: Path = FILE_DIR / "manual", *, verbose: bool = True
+) -> ImportStats:
     """Validate XML keyboxes from `manual_dir` and hard-link approved files into `keys/`."""
     stats = ImportStats()
     manual_dir = manual_dir.resolve()
 
     if not manual_dir.exists():
-        log_warning(f"Manual directory not found at {manual_dir}.")
+        log_warning(f"Manual directory not found at {manual_dir}, skipping import.")
         return stats
 
     if manual_dir.is_file():

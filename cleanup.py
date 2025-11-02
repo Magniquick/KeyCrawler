@@ -12,7 +12,9 @@ class CleanupStats:
     errors: int = 0
 
 
-def cleanup_invalid_keyboxes(directory: Path = SAVE_DIR, *, verbose: bool = True) -> CleanupStats:
+def cleanup_invalid_keyboxes(
+    directory: Path = SAVE_DIR, *, verbose: bool = True
+) -> CleanupStats:
     """Remove stored keyboxes that no longer pass validation."""
     stats = CleanupStats()
     directory = directory.resolve()

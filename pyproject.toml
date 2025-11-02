@@ -1,7 +1,7 @@
 [project]
 name = "android"
-version = "1.1.0"
-description = ""
+version = "1.1.1"
+description = "Crawls android keybox files from literally all of GitHub."
 readme = "README.md"
 authors = [
     { name = "Magniquick", email = "67406856+Magniquick@users.noreply.github.com" },
@@ -19,5 +19,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "lxml-stubs>=0.5.1",
+    "pre-commit>=4.3.0",
     "types-requests>=2.32.4.20250913",
 ]
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true

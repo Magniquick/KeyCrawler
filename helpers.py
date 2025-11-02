@@ -44,7 +44,9 @@ def print_section(title: str) -> None:
 
 
 def print_summary(title: str, rows: Iterable[Tuple[str, str]]) -> None:
-    formatted = "  ".join(f"[bold white]{label}[/]: [cyan]{value}[/]" for label, value in rows)
+    formatted = "  ".join(
+        f"[bold white]{label}[/]: [cyan]{value}[/]" for label, value in rows
+    )
     console.print(f"[{SECTION_STYLE}]{title}[/]  {formatted}")
 
 
